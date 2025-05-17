@@ -8,15 +8,12 @@ dotenv.config();
 const HMAC_SECRET = process.env.HMAC_SECRET || 'default-secret-for-development';
 const REDIRECT_URL = 'https://example.com/landing';
 
-// In-memory store for click tracking
-// Note: This is temporary and will be lost on server restart
-// To migrate to Redis:
-// 1. Replace this with a Redis client
-// 2. Use Redis SET with NX flag for atomic operations
-// 3. Add TTL for data expiration
+// In-memory stores
 const clickStore: Record<string, Set<string>> = {};
+const ipVelocityStore = new Map<string, number>(); // IP -> last timestamp
 let totalClicks = 0;
 let uniqueClicks = 0;
+let failedClicks = 0;
 
 // HMAC helper functions
 function signCmid(cmid: string): string {
@@ -31,6 +28,24 @@ function verifySignature(cmid: string, signature: string): boolean {
         Buffer.from(signature),
         Buffer.from(expectedSignature)
     );
+}
+
+// Token validation
+function isValidToken(token: string): boolean {
+    return /^[a-f0-9]{40}$/i.test(token);
+}
+
+// IP velocity check
+function checkIpVelocity(ip: string): boolean {
+    const now = Date.now();
+    const lastClick = ipVelocityStore.get(ip);
+
+    if (lastClick && (now - lastClick) < 1000) { // 1 second
+        return false;
+    }
+
+    ipVelocityStore.set(ip, now);
+    return true;
 }
 
 // Generate a click link with signed cmid
@@ -54,21 +69,91 @@ const server = Fastify();
 // Click tracking endpoint
 server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, string> }>, reply: FastifyReply) => {
     const { cmid, sig, ...rest } = request.query;
+    const ip = request.ip;
+    const userAgent = request.headers['user-agent'] || '';
 
+    // Log all incoming requests for debugging
+    console.log('\n=== Incoming Request ===');
+    console.log('Headers:', JSON.stringify(request.headers, null, 2));
+    console.log('Query:', JSON.stringify(request.query, null, 2));
+    console.log('IP:', ip);
+    console.log('========================\n');
+
+    // 1. Signature verification
     if (!cmid || !sig) {
+        failedClicks++;
+        console.log('\n=== Failed Click (Missing Parameters) ===');
+        console.log(`Total Failed Clicks: ${failedClicks}`);
+        console.log(`CMID: ${cmid || 'missing'}`);
+        console.log(`Signature: ${sig || 'missing'}`);
+        console.log(`IP: ${ip}`);
+        console.log(`User-Agent: ${userAgent}`);
+        console.log('=======================================\n');
         return reply.code(400).send({ error: 'Missing cmid or signature' });
     }
 
     if (!verifySignature(cmid, sig)) {
+        failedClicks++;
+        console.log('\n=== Failed Click (Invalid Signature) ===');
+        console.log(`Total Failed Clicks: ${failedClicks}`);
+        console.log(`CMID: ${cmid}`);
+        console.log(`Signature: ${sig}`);
+        console.log(`IP: ${ip}`);
+        console.log(`User-Agent: ${userAgent}`);
+        console.log('=======================================\n');
         return reply.code(400).send({ error: 'Invalid signature' });
     }
 
+    // 2. Token format validation
     const token = extractToken(rest);
     if (!token) {
+        failedClicks++;
+        console.log('\n=== Failed Click (No Token) ===');
+        console.log(`Total Failed Clicks: ${failedClicks}`);
+        console.log(`CMID: ${cmid}`);
+        console.log(`IP: ${ip}`);
+        console.log(`User-Agent: ${userAgent}`);
+        console.log('=======================================\n');
         return reply.code(400).send({ error: 'No valid token found' });
     }
 
-    // Check if this cmid:token combination has been seen before
+    // Log token details for analysis
+    console.log('\n=== Token Analysis ===');
+    console.log('Token:', token);
+    console.log('Token Length:', token.length);
+    console.log('Token Type:', typeof token);
+    console.log('Is Hex:', /^[a-f0-9]+$/i.test(token));
+    console.log('All Query Params:', JSON.stringify(rest, null, 2));
+    console.log('========================\n');
+
+    if (!isValidToken(token)) {
+        failedClicks++;
+        console.log('\n=== Failed Click (Bad Token Format) ===');
+        console.log(`Total Failed Clicks: ${failedClicks}`);
+        console.log(`CMID: ${cmid}`);
+        console.log(`Token: ${token}`);
+        console.log(`IP: ${ip}`);
+        console.log(`User-Agent: ${userAgent}`);
+        console.log('Reason: bad-format');
+        console.log('=======================================\n');
+        return reply.code(400).send({ error: 'Token format invalid' });
+    }
+
+    // 3. IP velocity check
+    if (!checkIpVelocity(ip)) {
+        failedClicks++;
+        console.log('\n=== Failed Click (IP Velocity) ===');
+        console.log(`Total Failed Clicks: ${failedClicks}`);
+        console.log(`CMID: ${cmid}`);
+        console.log(`Token: ${token}`);
+        console.log(`IP: ${ip}`);
+        console.log(`User-Agent: ${userAgent}`);
+        console.log('Reason: ip-velocity');
+        console.log('=======================================\n');
+        return reply.code(429).send({ error: 'Rate limit per IP exceeded' });
+    }
+
+    // 4. Existing de-duplication logic
     const isBillable = !clickStore[cmid]?.has(token);
 
     // Store the token for this cmid
@@ -87,9 +172,12 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     console.log('\n=== Click Event ===');
     console.log(`Total Clicks: ${totalClicks}`);
     console.log(`Unique Clicks: ${uniqueClicks}`);
+    console.log(`Failed Clicks: ${failedClicks}`);
     console.log(`CMID: ${cmid}`);
     console.log(`Token: ${token}`);
     console.log(`Billable: ${isBillable}`);
+    console.log(`IP: ${ip}`);
+    console.log(`User-Agent: ${userAgent}`);
     console.log('==================\n');
 
     // Redirect to landing page
@@ -101,7 +189,14 @@ const start = async () => {
     try {
         await server.listen({ port: 3000, host: '0.0.0.0' });
         console.log('Server running at http://localhost:3000');
-        console.log('\nTo test, visit: http://localhost:3000/c?cmid=test-123&sig=' + signCmid('test-123') + '&_bhlid=test-token-1');
+
+        // Generate a test link for the newsletter
+        const testCmid = 'newsletter-test-1';
+        const testLink = generateClickLink(testCmid);
+        console.log('\n=== Newsletter Test Link ===');
+        console.log('Use this link in your newsletter:');
+        console.log(testLink);
+        console.log('===========================\n');
     } catch (err) {
         server.log.error(err);
         process.exit(1);
