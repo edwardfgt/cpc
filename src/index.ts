@@ -10,7 +10,7 @@ const REDIRECT_URL = 'https://example.com/landing';
 
 // In-memory stores
 const clickStore: Record<string, Set<string>> = {};
-const ipVelocityStore = new Map<string, number>(); // IP -> last timestamp
+const ipTokenStore = new Map<string, Set<string>>(); // IP -> Set of tokens
 let totalClicks = 0;
 let uniqueClicks = 0;
 let failedClicks = 0;
@@ -35,16 +35,23 @@ function isValidToken(token: string): boolean {
     return /^[a-f0-9]{40}$/i.test(token);
 }
 
-// IP velocity check
-function checkIpVelocity(ip: string): boolean {
-    const now = Date.now();
-    const lastClick = ipVelocityStore.get(ip);
+// IP-token uniqueness check
+function checkIpTokenUniqueness(ip: string, token: string): boolean {
+    const tokens = ipTokenStore.get(ip);
 
-    if (lastClick && (now - lastClick) < 1000) { // 1 second
+    if (!tokens) {
+        // First click from this IP
+        ipTokenStore.set(ip, new Set([token]));
+        return true;
+    }
+
+    if (tokens.has(token)) {
+        // This IP has already clicked with this token
         return false;
     }
 
-    ipVelocityStore.set(ip, now);
+    // New token from this IP
+    tokens.add(token);
     return true;
 }
 
@@ -139,18 +146,18 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
         return reply.code(400).send({ error: 'Token format invalid' });
     }
 
-    // 3. IP velocity check
-    if (!checkIpVelocity(ip)) {
+    // 3. IP-token uniqueness check
+    if (!checkIpTokenUniqueness(ip, token)) {
         failedClicks++;
-        console.log('\n=== Failed Click (IP Velocity) ===');
+        console.log('\n=== Failed Click (IP-Token Duplicate) ===');
         console.log(`Total Failed Clicks: ${failedClicks}`);
         console.log(`CMID: ${cmid}`);
         console.log(`Token: ${token}`);
         console.log(`IP: ${ip}`);
         console.log(`User-Agent: ${userAgent}`);
-        console.log('Reason: ip-velocity');
+        console.log('Reason: ip-token-duplicate');
         console.log('=======================================\n');
-        return reply.code(429).send({ error: 'Rate limit per IP exceeded' });
+        return reply.code(400).send({ error: 'Duplicate click from same IP and token' });
     }
 
     // 4. Existing de-duplication logic
@@ -190,9 +197,8 @@ const start = async () => {
         await server.listen({ port: 3000, host: '0.0.0.0' });
         console.log('Server running at http://localhost:3000');
 
-        // Generate a test link for the newsletter
-        const testCmid = 'newsletter-test-1';
-        const testLink = generateClickLink(testCmid);
+        // Hardcoded test link for Beehiiv testing
+        const testLink = 'http://localhost:3000/c?cmid=newsletter-test-1&sig=3f5c53f5db16c024f3667d6818b862f91cc524739ec1088d69635e1fff72d258';
         console.log('\n=== Newsletter Test Link ===');
         console.log('Use this link in your newsletter:');
         console.log(testLink);
