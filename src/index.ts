@@ -79,35 +79,16 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     const ip = request.ip;
     const userAgent = request.headers['user-agent'] || '';
 
-    // Log all incoming requests for debugging
-    console.log('\n=== Incoming Request ===');
-    console.log('Headers:', JSON.stringify(request.headers, null, 2));
-    console.log('Query:', JSON.stringify(request.query, null, 2));
-    console.log('IP:', ip);
-    console.log('========================\n');
-
     // 1. Signature verification
     if (!cmid || !sig) {
         failedClicks++;
-        console.log('\n=== Failed Click (Missing Parameters) ===');
-        console.log(`Total Failed Clicks: ${failedClicks}`);
-        console.log(`CMID: ${cmid || 'missing'}`);
-        console.log(`Signature: ${sig || 'missing'}`);
-        console.log(`IP: ${ip}`);
-        console.log(`User-Agent: ${userAgent}`);
-        console.log('=======================================\n');
+        console.log(`❌ Click Failed: Missing parameters (cmid: ${cmid || 'missing'}, sig: ${sig || 'missing'})`);
         return reply.code(400).send({ error: 'Missing cmid or signature' });
     }
 
     if (!verifySignature(cmid, sig)) {
         failedClicks++;
-        console.log('\n=== Failed Click (Invalid Signature) ===');
-        console.log(`Total Failed Clicks: ${failedClicks}`);
-        console.log(`CMID: ${cmid}`);
-        console.log(`Signature: ${sig}`);
-        console.log(`IP: ${ip}`);
-        console.log(`User-Agent: ${userAgent}`);
-        console.log('=======================================\n');
+        console.log(`❌ Click Failed: Invalid signature (cmid: ${cmid})`);
         return reply.code(400).send({ error: 'Invalid signature' });
     }
 
@@ -115,48 +96,20 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     const token = extractToken(rest);
     if (!token) {
         failedClicks++;
-        console.log('\n=== Failed Click (No Token) ===');
-        console.log(`Total Failed Clicks: ${failedClicks}`);
-        console.log(`CMID: ${cmid}`);
-        console.log(`IP: ${ip}`);
-        console.log(`User-Agent: ${userAgent}`);
-        console.log('=======================================\n');
+        console.log(`❌ Click Failed: No token found (cmid: ${cmid})`);
         return reply.code(400).send({ error: 'No valid token found' });
     }
 
-    // Log token details for analysis
-    console.log('\n=== Token Analysis ===');
-    console.log('Token:', token);
-    console.log('Token Length:', token.length);
-    console.log('Token Type:', typeof token);
-    console.log('Is Hex:', /^[a-f0-9]+$/i.test(token));
-    console.log('All Query Params:', JSON.stringify(rest, null, 2));
-    console.log('========================\n');
-
     if (!isValidToken(token)) {
         failedClicks++;
-        console.log('\n=== Failed Click (Bad Token Format) ===');
-        console.log(`Total Failed Clicks: ${failedClicks}`);
-        console.log(`CMID: ${cmid}`);
-        console.log(`Token: ${token}`);
-        console.log(`IP: ${ip}`);
-        console.log(`User-Agent: ${userAgent}`);
-        console.log('Reason: bad-format');
-        console.log('=======================================\n');
+        console.log(`❌ Click Failed: Invalid token format (token: ${token})`);
         return reply.code(400).send({ error: 'Token format invalid' });
     }
 
     // 3. IP-token uniqueness check
     if (!checkIpTokenUniqueness(ip, token)) {
         failedClicks++;
-        console.log('\n=== Failed Click (IP-Token Duplicate) ===');
-        console.log(`Total Failed Clicks: ${failedClicks}`);
-        console.log(`CMID: ${cmid}`);
-        console.log(`Token: ${token}`);
-        console.log(`IP: ${ip}`);
-        console.log(`User-Agent: ${userAgent}`);
-        console.log('Reason: ip-token-duplicate');
-        console.log('=======================================\n');
+        console.log(`❌ Click Failed: Duplicate IP-token (IP: ${ip}, token: ${token})`);
         return reply.code(400).send({ error: 'Duplicate click from same IP and token' });
     }
 
@@ -176,16 +129,8 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     }
 
     // Log the click with a clear format
-    console.log('\n=== Click Event ===');
-    console.log(`Total Clicks: ${totalClicks}`);
-    console.log(`Unique Clicks: ${uniqueClicks}`);
-    console.log(`Failed Clicks: ${failedClicks}`);
-    console.log(`CMID: ${cmid}`);
-    console.log(`Token: ${token}`);
-    console.log(`Billable: ${isBillable}`);
-    console.log(`IP: ${ip}`);
-    console.log(`User-Agent: ${userAgent}`);
-    console.log('==================\n');
+    console.log(`✅ Click Accepted: ${isBillable ? 'Billable' : 'Duplicate'} (cmid: ${cmid}, token: ${token})`);
+    console.log(`📊 Stats: Total: ${totalClicks}, Unique: ${uniqueClicks}, Failed: ${failedClicks}\n`);
 
     // Redirect to landing page
     return reply.redirect(REDIRECT_URL);
