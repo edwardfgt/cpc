@@ -83,13 +83,13 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     if (!cmid || !sig) {
         failedClicks++;
         console.log(`❌ Click Failed: Missing parameters (cmid: ${cmid || 'missing'}, sig: ${sig || 'missing'})`);
-        return reply.code(400).send({ error: 'Missing cmid or signature' });
+        return reply.redirect(REDIRECT_URL);
     }
 
     if (!verifySignature(cmid, sig)) {
         failedClicks++;
         console.log(`❌ Click Failed: Invalid signature (cmid: ${cmid})`);
-        return reply.code(400).send({ error: 'Invalid signature' });
+        return reply.redirect(REDIRECT_URL);
     }
 
     // 2. Token format validation
@@ -97,20 +97,20 @@ server.get('/c', async (request: FastifyRequest<{ Querystring: Record<string, st
     if (!token) {
         failedClicks++;
         console.log(`❌ Click Failed: No token found (cmid: ${cmid})`);
-        return reply.code(400).send({ error: 'No valid token found' });
+        return reply.redirect(REDIRECT_URL);
     }
 
     if (!isValidToken(token)) {
         failedClicks++;
         console.log(`❌ Click Failed: Invalid token format (token: ${token})`);
-        return reply.code(400).send({ error: 'Token format invalid' });
+        return reply.redirect(REDIRECT_URL);
     }
 
     // 3. IP-token uniqueness check
     if (!checkIpTokenUniqueness(ip, token)) {
         failedClicks++;
         console.log(`❌ Click Failed: Duplicate IP-token (IP: ${ip}, token: ${token})`);
-        return reply.code(400).send({ error: 'Duplicate click from same IP and token' });
+        return reply.redirect(REDIRECT_URL);
     }
 
     // 4. Existing de-duplication logic
