@@ -4,7 +4,7 @@ import { generateClickLink } from '../utils/links';
 
 // Mock the generateClickLink function
 jest.mock('../utils/links', () => ({
-    generateClickLink: jest.fn().mockReturnValue('http://localhost:3000/c?cmid=test-campaign&sig=mock-signature')
+    generateClickLink: jest.fn().mockReturnValue('http://localhost:3000/c?placementId=test-campaign&sig=mock-signature')
 }));
 
 describe('Campaign Routes', () => {
@@ -25,7 +25,7 @@ describe('Campaign Routes', () => {
                 method: 'POST',
                 url: '/create-campaign',
                 payload: {
-                    cmid: 'test-campaign',
+                    placementId: 'test-campaign',
                     destinationUrl: 'https://example.com/test'
                 }
             });
@@ -33,14 +33,14 @@ describe('Campaign Routes', () => {
             expect(response.statusCode).toBe(200);
             const body = JSON.parse(response.body);
             expect(body).toEqual({
-                trackingLink: 'http://localhost:3000/c?cmid=test-campaign&sig=mock-signature',
-                cmid: 'test-campaign',
+                trackingLink: 'http://localhost:3000/c?placementId=test-campaign&sig=mock-signature',
+                placementId: 'test-campaign',
                 destinationUrl: 'https://example.com/test'
             });
             expect(generateClickLink).toHaveBeenCalledWith('test-campaign');
         });
 
-        it('should return 400 when cmid is missing', async () => {
+        it('should return 400 when placementId is missing', async () => {
             const response = await server.inject({
                 method: 'POST',
                 url: '/create-campaign',
@@ -52,7 +52,7 @@ describe('Campaign Routes', () => {
             expect(response.statusCode).toBe(400);
             const body = JSON.parse(response.body);
             expect(body).toEqual({
-                error: 'Missing required field: cmid'
+                error: 'Missing required field: placementId'
             });
         });
 
@@ -61,7 +61,7 @@ describe('Campaign Routes', () => {
                 method: 'POST',
                 url: '/create-campaign',
                 payload: {
-                    cmid: 'test-campaign'
+                    placementId: 'test-campaign'
                 }
             });
 
@@ -82,7 +82,7 @@ describe('Campaign Routes', () => {
             expect(response.statusCode).toBe(400);
             const body = JSON.parse(response.body);
             expect(body).toEqual({
-                error: 'Missing required fields: cmid and destinationUrl'
+                error: 'Missing required fields: placementId and destinationUrl'
             });
         });
     });

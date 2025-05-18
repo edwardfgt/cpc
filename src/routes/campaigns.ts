@@ -8,22 +8,22 @@ export async function campaignRoutes(fastify: FastifyInstance) {
     // Campaign creation endpoint
     fastify.post('/create-campaign', async (request: FastifyRequest<{
         Body: {
-            cmid: string;
+            placementId: string;
             destinationUrl: string;
         }
     }>, reply: FastifyReply) => {
-        const { cmid, destinationUrl } = request.body;
+        const { placementId, destinationUrl } = request.body;
 
         // Check for missing fields with specific error messages
-        if (!cmid && !destinationUrl) {
+        if (!placementId && !destinationUrl) {
             return reply.status(400).send({
-                error: 'Missing required fields: cmid and destinationUrl'
+                error: 'Missing required fields: placementId and destinationUrl'
             });
         }
 
-        if (!cmid) {
+        if (!placementId) {
             return reply.status(400).send({
-                error: 'Missing required field: cmid'
+                error: 'Missing required field: placementId'
             });
         }
 
@@ -34,14 +34,14 @@ export async function campaignRoutes(fastify: FastifyInstance) {
         }
 
         // Store the destination URL for this campaign
-        campaignDestinations[cmid] = destinationUrl;
+        campaignDestinations[placementId] = destinationUrl;
 
         // Generate the tracking link
-        const trackingLink = generateClickLink(cmid);
+        const trackingLink = generateClickLink(placementId);
 
         return reply.send({
             trackingLink,
-            cmid,
+            placementId,
             destinationUrl
         });
     });

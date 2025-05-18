@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'crypto';
-import { signCmid } from './links';
+import { signPlacementId } from './links';
 import { ipTokenStore } from '../routes/clicks';
 
-export function verifySignature(cmid: string, signature: string): boolean {
-    const expectedSignature = signCmid(cmid);
+export function verifySignature(placementId: string, signature: string): boolean {
+    const expectedSignature = signPlacementId(placementId);
     return timingSafeEqual(
         Buffer.from(signature),
         Buffer.from(expectedSignature)
