@@ -14,9 +14,22 @@ export async function campaignRoutes(fastify: FastifyInstance) {
     }>, reply: FastifyReply) => {
         const { cmid, destinationUrl } = request.body;
 
-        if (!cmid || !destinationUrl) {
+        // Check for missing fields with specific error messages
+        if (!cmid && !destinationUrl) {
             return reply.status(400).send({
                 error: 'Missing required fields: cmid and destinationUrl'
+            });
+        }
+
+        if (!cmid) {
+            return reply.status(400).send({
+                error: 'Missing required field: cmid'
+            });
+        }
+
+        if (!destinationUrl) {
+            return reply.status(400).send({
+                error: 'Missing required field: destinationUrl'
             });
         }
 
