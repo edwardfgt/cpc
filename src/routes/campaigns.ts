@@ -1,31 +1,17 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { generateClickLink } from '../utils/links';
-
-// In-memory store for campaign destinations
-export const campaignDestinations: Record<string, string> = {};
+import { supabase } from '../lib/supabase';
+import { Database } from '../types/database';
 
 export async function campaignRoutes(fastify: FastifyInstance) {
     // Campaign creation endpoint
     fastify.post('/create-campaign', async (request: FastifyRequest<{
         Body: {
-            placementId: string;
+            placementId?: string;
             destinationUrl: string;
         }
     }>, reply: FastifyReply) => {
         const { placementId, destinationUrl } = request.body;
-
-        // Check for missing fields with specific error messages
-        if (!placementId && !destinationUrl) {
-            return reply.status(400).send({
-                error: 'Missing required fields: placementId and destinationUrl'
-            });
-        }
-
-        if (!placementId) {
-            return reply.status(400).send({
-                error: 'Missing required field: placementId'
-            });
-        }
 
         if (!destinationUrl) {
             return reply.status(400).send({
@@ -33,16 +19,68 @@ export async function campaignRoutes(fastify: FastifyInstance) {
             });
         }
 
-        // Store the destination URL for this campaign
-        campaignDestinations[placementId] = destinationUrl;
+        try {
+            // Insert the placement into Supabase
+            const { data: placement, error } = await supabase
+                .from('placements')
+                .insert({ landing_url: destinationUrl })
+                .select()
+                .single();
 
-        // Generate the tracking link
-        const trackingLink = generateClickLink(placementId);
+            if (error) {
+                console.error('Supabase error:', error);
+                return reply.status(500).send({
+                    error: 'Failed to create placement'
+                });
+            }
 
-        return reply.send({
-            trackingLink,
-            placementId,
-            destinationUrl
-        });
+            // Generate the tracking link using the database ID
+            const trackingLink = generateClickLink(placement.id);
+
+            return reply.send({
+                trackingLink,
+                placementId: placement.id,
+                destinationUrl: placement.landing_url
+            });
+        } catch (err) {
+            console.error('Error creating placement:', err);
+            return reply.status(500).send({
+                error: 'Internal server error'
+            });
+        }
+    });
+
+    // Get placement details
+    fastify.get('/campaigns/:id', async (request: FastifyRequest<{
+        Params: { id: string }
+    }>, reply: FastifyReply) => {
+        const { id } = request.params;
+
+        try {
+            const { data: placement, error } = await supabase
+                .from('placements')
+                .select()
+                .eq('id', id)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    return reply.status(404).send({
+                        error: 'Placement not found'
+                    });
+                }
+                console.error('Supabase error:', error);
+                return reply.status(500).send({
+                    error: 'Failed to fetch placement'
+                });
+            }
+
+            return reply.send(placement);
+        } catch (err) {
+            console.error('Error fetching placement:', err);
+            return reply.status(500).send({
+                error: 'Internal server error'
+            });
+        }
     });
 } 
