@@ -2,6 +2,20 @@ import { timingSafeEqual } from 'crypto';
 import { signPlacementId } from './links';
 import { ipTokenStore } from '../routes/clicks';
 
+// Common bot user agents to block
+const COMMON_BOT_HEADERS = [
+    'bot',
+    'crawler',
+    'spider',
+    'curl',
+    'wget',
+    'python-requests',
+    'apache-httpclient',
+    'java-http-client',
+    'headless',
+    'selenium'
+];
+
 export function verifySignature(placementId: string, signature: string): boolean {
     const expectedSignature = signPlacementId(placementId);
     return timingSafeEqual(
@@ -33,6 +47,14 @@ export function checkIpTokenUniqueness(ip: string, token: string): boolean {
     // New token from this IP
     tokens.add(token);
     return true;
+}
+
+// Check for common bot user agents
+export function isBotUserAgent(userAgent: string): boolean {
+    if (!userAgent) return true; // Block empty user agents
+
+    const lowerUserAgent = userAgent.toLowerCase();
+    return COMMON_BOT_HEADERS.some(header => lowerUserAgent.includes(header));
 }
 
 // Extract first available token from query params

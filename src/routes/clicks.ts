@@ -1,5 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { verifySignature, extractToken, isValidToken, checkIpTokenUniqueness } from '../utils/validation';
+import {
+    verifySignature,
+    extractToken,
+    isValidToken,
+    checkIpTokenUniqueness,
+    isBotUserAgent
+} from '../utils/validation';
 import { supabase } from '../lib/supabase';
 
 // In-memory stores for click tracking
@@ -20,6 +26,13 @@ export async function clickRoutes(fastify: FastifyInstance) {
         console.log('Query params:', { placementId, sig });
         const ip = request.ip;
         const userAgent = request.headers['user-agent'] || '';
+
+        // Check for bot user agent
+        if (isBotUserAgent(userAgent)) {
+            console.log('❌ Bot user agent detected');
+            failedClicks++;
+            return reply.redirect(REDIRECT_URL);
+        }
 
         // 1. Signature verification
         if (!placementId || !sig) {
