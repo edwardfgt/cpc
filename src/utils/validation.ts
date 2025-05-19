@@ -16,6 +16,9 @@ const COMMON_BOT_HEADERS = [
     'selenium'
 ];
 
+// Link validity period in milliseconds (72 hours)
+const LINK_VALIDITY_PERIOD = 72 * 60 * 60 * 1000;
+
 export function verifySignature(placementId: string, signature: string): boolean {
     const expectedSignature = signPlacementId(placementId);
     return timingSafeEqual(
@@ -24,9 +27,12 @@ export function verifySignature(placementId: string, signature: string): boolean
     );
 }
 
-// Token validation
+// Token validation - 40 character hex string
 export function isValidToken(token: string): boolean {
-    return /^[a-f0-9]{40}$/i.test(token);
+    // Debug log the token and its length
+    console.log('Validating token:', token, 'Length:', token.length);
+    // Check for exactly 40 characters of hex (0-9, a-f, A-F)
+    return /^[0-9a-fA-F]{40}$/.test(token);
 }
 
 // IP-token uniqueness check
@@ -55,6 +61,25 @@ export function isBotUserAgent(userAgent: string): boolean {
 
     const lowerUserAgent = userAgent.toLowerCase();
     return COMMON_BOT_HEADERS.some(header => lowerUserAgent.includes(header));
+}
+
+// Check if a link is still valid (within 72 hours of creation)
+export function isLinkValid(createdAt: string): boolean {
+    const creationTime = new Date(createdAt).getTime();
+    const currentTime = Date.now();
+    const timeDiff = currentTime - creationTime;
+
+    // Debug logging
+    console.log('Link validation:', {
+        createdAt,
+        creationTime,
+        currentTime,
+        timeDiff,
+        validityPeriod: LINK_VALIDITY_PERIOD,
+        isValid: timeDiff > 0 && timeDiff <= LINK_VALIDITY_PERIOD
+    });
+
+    return timeDiff > 0 && timeDiff <= LINK_VALIDITY_PERIOD;
 }
 
 // Extract first available token from query params

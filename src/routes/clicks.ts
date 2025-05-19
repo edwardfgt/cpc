@@ -4,7 +4,8 @@ import {
     extractToken,
     isValidToken,
     checkIpTokenUniqueness,
-    isBotUserAgent
+    isBotUserAgent,
+    isLinkValid
 } from '../utils/validation';
 import { supabase } from '../lib/supabase';
 
@@ -66,13 +67,20 @@ export async function clickRoutes(fastify: FastifyInstance) {
         console.log('Looking up placementId:', placementId);
         const { data: placement, error } = await supabase
             .from('placements')
-            .select('landing_url')
+            .select('landing_url, created_at')
             .eq('id', placementId)
             .single();
 
         if (error || !placement) {
             console.error('Supabase error:', error);
             console.error('Placement not found for id:', placementId);
+            failedClicks++;
+            return reply.redirect(REDIRECT_URL);
+        }
+
+        // 5. Check if link is still valid (within 72 hours)
+        if (!isLinkValid(placement.created_at)) {
+            console.log('❌ Link has expired (older than 72 hours)');
             failedClicks++;
             return reply.redirect(REDIRECT_URL);
         }
