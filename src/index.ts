@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { campaignRoutes } from './routes/campaigns';
 import { clickRoutes } from './routes/clicks';
 import { advertiserRoutes } from './routes/advertisers';
+import { publisherRoutes } from './routes/publishers';
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +15,7 @@ const server = Fastify();
 server.register(campaignRoutes);
 server.register(clickRoutes);
 server.register(advertiserRoutes);
+server.register(publisherRoutes);
 
 // Start the server
 const start = async () => {
