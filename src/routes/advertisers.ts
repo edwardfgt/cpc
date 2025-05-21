@@ -23,6 +23,11 @@ export async function advertiserRoutes(fastify: FastifyInstance) {
                 .single();
 
             if (error) {
+                if (error.code === '23505' && error.message.includes('advertisers_name_key')) {
+                    return reply.status(409).send({
+                        error: 'An advertiser with this name already exists'
+                    });
+                }
                 console.error('Supabase error:', error);
                 return reply.status(500).send({
                     error: 'Failed to create advertiser'
@@ -120,6 +125,11 @@ export async function advertiserRoutes(fastify: FastifyInstance) {
                 .single();
 
             if (error) {
+                if (error.code === '23505' && error.message.includes('advertisers_name_key')) {
+                    return reply.status(409).send({
+                        error: 'An advertiser with this name already exists'
+                    });
+                }
                 if (error.code === 'PGRST116') {
                     return reply.status(404).send({
                         error: 'Advertiser not found'
