@@ -20,8 +20,8 @@ export async function campaignRoutes(fastify: FastifyInstance) {
         }
 
         try {
-            // Insert the placement into Supabase
-            const { data: placement, error } = await supabase
+            // Insert the campaign into Supabase
+            const { data: campaign, error } = await supabase
                 .from('campaigns')
                 .insert({ landing_url: destinationUrl })
                 .select()
@@ -30,34 +30,34 @@ export async function campaignRoutes(fastify: FastifyInstance) {
             if (error) {
                 console.error('Supabase error:', error);
                 return reply.status(500).send({
-                    error: 'Failed to create placement'
+                    error: 'Failed to create campaign'
                 });
             }
 
             // Generate the tracking link using the database ID
-            const trackingLink = generateClickLink(placement.id);
+            const trackingLink = generateClickLink(campaign.id);
 
             return reply.send({
                 trackingLink,
-                placementId: placement.id,
-                destinationUrl: placement.landing_url
+                campaignId: campaign.id,
+                destinationUrl: campaign.landing_url
             });
         } catch (err) {
-            console.error('Error creating placement:', err);
+            console.error('Error creating campaign:', err);
             return reply.status(500).send({
                 error: 'Internal server error'
             });
         }
     });
 
-    // Get placement details
+    // Get campaign details
     fastify.get('/campaigns/:id', async (request: FastifyRequest<{
         Params: { id: string }
     }>, reply: FastifyReply) => {
         const { id } = request.params;
 
         try {
-            const { data: placement, error } = await supabase
+            const { data: campaign, error } = await supabase
                 .from('campaigns')
                 .select()
                 .eq('id', id)
@@ -66,18 +66,18 @@ export async function campaignRoutes(fastify: FastifyInstance) {
             if (error) {
                 if (error.code === 'PGRST116') {
                     return reply.status(404).send({
-                        error: 'Placement not found'
+                        error: 'Campaign not found'
                     });
                 }
                 console.error('Supabase error:', error);
                 return reply.status(500).send({
-                    error: 'Failed to fetch placement'
+                    error: 'Failed to fetch campaign'
                 });
             }
 
-            return reply.send(placement);
+            return reply.send(campaign);
         } catch (err) {
-            console.error('Error fetching placement:', err);
+            console.error('Error fetching campaign:', err);
             return reply.status(500).send({
                 error: 'Internal server error'
             });
