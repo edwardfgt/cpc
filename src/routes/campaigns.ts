@@ -1,7 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { generateClickLink } from '../utils/links';
 import { supabase } from '../lib/supabase';
-import { Database } from '../types/database';
 
 export async function campaignRoutes(fastify: FastifyInstance) {
     // Campaign creation endpoint

@@ -4,6 +4,7 @@ import { campaignRoutes } from './routes/campaigns';
 import { clickRoutes } from './routes/clicks';
 import { advertiserRoutes } from './routes/advertisers';
 import { publisherRoutes } from './routes/publishers';
+import { sendRoutes } from './routes/sends';
 
 // Load environment variables
 dotenv.config();
@@ -16,6 +17,7 @@ server.register(campaignRoutes);
 server.register(clickRoutes);
 server.register(advertiserRoutes);
 server.register(publisherRoutes);
+server.register(sendRoutes);
 
 // Start the server
 const start = async () => {
