@@ -22,7 +22,7 @@ export async function campaignRoutes(fastify: FastifyInstance) {
         try {
             // Insert the placement into Supabase
             const { data: placement, error } = await supabase
-                .from('placements')
+                .from('campaigns')
                 .insert({ landing_url: destinationUrl })
                 .select()
                 .single();
@@ -58,7 +58,7 @@ export async function campaignRoutes(fastify: FastifyInstance) {
 
         try {
             const { data: placement, error } = await supabase
-                .from('placements')
+                .from('campaigns')
                 .select()
                 .eq('id', id)
                 .single();
