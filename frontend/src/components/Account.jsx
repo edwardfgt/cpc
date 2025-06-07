@@ -6,6 +6,25 @@ export default function Account({ session }) {
     const [loading, setLoading] = useState(true)
     const [profile, setProfile] = useState(null)
     const [showCreateNewsletter, setShowCreateNewsletter] = useState(false)
+    const [newsletters, setNewsletters] = useState([])
+
+    const fetchNewsletters = async () => {
+        setLoading(true)
+        const { user } = session
+        if (user) {
+            const { data, error } = await supabase
+                .from('newsletters')
+                .select('*')
+                .eq('owner_id', user.id)
+
+            if (error) {
+                console.error('Error fetching newsletters:', error)
+            } else {
+                setNewsletters(data)
+            }
+        }
+        setLoading(false)
+    }
 
     useEffect(() => {
         let ignore = false
@@ -24,6 +43,9 @@ export default function Account({ session }) {
                     console.warn(error)
                 } else if (data) {
                     setProfile(data)
+                    if (data.user_type === 'publisher') {
+                        fetchNewsletters()
+                    }
                 }
             }
             setLoading(false)
@@ -58,6 +80,7 @@ export default function Account({ session }) {
 
     const handleNewsletterCreated = () => {
         setShowCreateNewsletter(false)
+        fetchNewsletters()
     }
 
     if (loading) {
@@ -108,6 +131,33 @@ export default function Account({ session }) {
                         </button>
                     ) : (
                         <CreateNewsletter session={session} onNewsletterCreated={handleNewsletterCreated} />
+                    )}
+
+                    {newsletters.length > 0 && (
+                        <div style={{ marginTop: '30px' }}>
+                            <h3>Your Newsletters</h3>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                                {newsletters.map((newsletter) => (
+                                    <div
+                                        key={newsletter.id}
+                                        style={{
+                                            border: '1px solid #ccc',
+                                            padding: '15px',
+                                            borderRadius: '8px',
+                                            width: '250px',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                        }}
+                                    >
+                                        <h4>{newsletter.name}</h4>
+                                        <p>Description: {newsletter.description}</p>
+                                        <p>Status: <strong>{newsletter.status.toUpperCase()}</strong></p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {newsletters.length === 0 && !showCreateNewsletter && (
+                        <p style={{ marginTop: '10px' }}>You haven't created any newsletters yet.</p>
                     )}
                 </div>
             )}
