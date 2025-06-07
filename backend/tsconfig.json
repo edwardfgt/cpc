@@ -10,17 +10,17 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": "backend/src",
         "types": [
             "node",
             "jest"
         ]
     },
     "include": [
-        "src/**/*"
+        "backend/src/**/*"
     ],
     "exclude": [
-        "node_modules",
+        "backend/node_modules",
         "dist"
     ]
 }

@@ -28,3 +28,7 @@ yarn-error.log*
 
 # Testing
 coverage/ 
+
+# Cursor
+.cursor/
+.cursor/mcp.json
