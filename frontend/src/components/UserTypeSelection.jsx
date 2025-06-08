@@ -24,7 +24,8 @@ export default function UserTypeSelection({ session, onUserTypeSelected }) {
 
         setLoading(false)
         if (error) {
-            alert(error.message)
+            console.error('Error upserting profile:', error)
+            alert('Database error saving new user: ' + error.message)
         } else {
             if (onUserTypeSelected) onUserTypeSelected(userType)
         }

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import CreateNewsletter from './CreateNewsletter'
+import EditNewsletter from './EditNewsletter'
 
 export default function Account({ session }) {
     const [loading, setLoading] = useState(true)
     const [profile, setProfile] = useState(null)
     const [showCreateNewsletter, setShowCreateNewsletter] = useState(false)
     const [newsletters, setNewsletters] = useState([])
+    const [editingNewsletter, setEditingNewsletter] = useState(null)
 
     const fetchNewsletters = async () => {
         setLoading(true)
@@ -83,6 +85,15 @@ export default function Account({ session }) {
         fetchNewsletters()
     }
 
+    const handleNewsletterEdited = () => {
+        setEditingNewsletter(null)
+        fetchNewsletters()
+    }
+
+    const handleEditCancel = () => {
+        setEditingNewsletter(null)
+    }
+
     if (loading) {
         return <div>Loading account details...</div>
     }
@@ -125,15 +136,22 @@ export default function Account({ session }) {
             {profile?.user_type === 'publisher' && (
                 <div style={{ marginTop: '20px' }}>
                     <h3>Publisher Actions</h3>
-                    {!showCreateNewsletter ? (
+                    {!showCreateNewsletter && !editingNewsletter ? (
                         <button className="button block" onClick={() => setShowCreateNewsletter(true)}>
                             Create New Newsletter
                         </button>
-                    ) : (
+                    ) : showCreateNewsletter ? (
                         <CreateNewsletter session={session} onNewsletterCreated={handleNewsletterCreated} />
-                    )}
+                    ) : editingNewsletter ? (
+                        <EditNewsletter
+                            session={session}
+                            newsletter={editingNewsletter}
+                            onEdited={handleNewsletterEdited}
+                            onCancel={handleEditCancel}
+                        />
+                    ) : null}
 
-                    {newsletters.length > 0 && (
+                    {!showCreateNewsletter && !editingNewsletter && newsletters.length > 0 && (
                         <div style={{ marginTop: '30px' }}>
                             <h3>Your Newsletters</h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
@@ -146,7 +164,9 @@ export default function Account({ session }) {
                                             borderRadius: '8px',
                                             width: '250px',
                                             boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                            cursor: 'pointer',
                                         }}
+                                        onClick={() => setEditingNewsletter(newsletter)}
                                     >
                                         <h4>{newsletter.name}</h4>
                                         <p>Description: {newsletter.description}</p>
@@ -156,7 +176,7 @@ export default function Account({ session }) {
                             </div>
                         </div>
                     )}
-                    {newsletters.length === 0 && !showCreateNewsletter && (
+                    {!showCreateNewsletter && !editingNewsletter && newsletters.length === 0 && (
                         <p style={{ marginTop: '10px' }}>You haven't created any newsletters yet.</p>
                     )}
                 </div>
